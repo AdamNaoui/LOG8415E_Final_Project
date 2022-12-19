@@ -1,4 +1,5 @@
 import boto3
+import subprocess
 
 # Create an EC2 client
 ec2 = boto3.client('ec2')
@@ -27,6 +28,7 @@ ec2.authorize_security_group_ingress(
 
 # Launch an EC2 instance
 instance = ec2.run_instances(
+    UserData=open('./starting_scripts/stand_alone_server_starting_script.sh').read(),
     ImageId='ami-0a6b2839d44d781b2',  # Ubuntu 20.04 AMI
     InstanceType='t2.micro',
     KeyName='my_key_pair',
@@ -41,5 +43,11 @@ instance_id = instance['Instances'][0]['InstanceId']
 ec2.get_waiter('instance_running').wait(InstanceIds=[instance_id])
 instance_info = ec2.describe_instances(InstanceIds=[instance_id])
 public_ip_address = instance_info['Reservations'][0]['Instances'][0]['PublicIpAddress']
+
 with open('IPS.text', 'w') as f:
     f.write('StandAloneServerIP: ' + public_ip_address)
+
+rc = subprocess.call("chmod 600 my_key_pair.pem", shell=True)
+
+# print correct command ton ssh
+print("ssh -i my_key_pair.pem ubuntu@" + public_ip_address)
