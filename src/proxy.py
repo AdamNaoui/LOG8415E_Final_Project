@@ -1,5 +1,6 @@
 #!/usr/bin/python
 from flask import Flask
+from pythonping import ping
 
 app = Flask(__name__)
 
@@ -17,3 +18,8 @@ def custom_endpoint():
 @app.route('/random')
 def random_endpoint():
     pass
+
+
+def get_instance_ping(host):
+    ping_result = ping(target=host, timeout=3, count=10)
+    return ping_result.rtt_avg_ms
