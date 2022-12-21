@@ -1,6 +1,5 @@
 #!/usr/bin/python
 import random
-
 from flask import Flask
 from pythonping import ping
 from sshtunnel import SSHTunnelForwarder
@@ -11,6 +10,25 @@ import pymysql.cursors
 def get_instance_ping(host):
     ping_result = ping(target=host, timeout=3, count=10)
     return ping_result.rtt_avg_ms
+
+
+def get_formated_content(results):
+    formatted_res = "<table>"
+    keys = []
+    for result in results:
+        if not keys:
+            keys = result.keys()
+            formatted_res += "<tr>"
+            for key in keys:
+                formatted_res += f"<th>{key}</th>"
+            formatted_res += "</tr>"
+        formatted_res += "<tr>"
+
+        for key, value in result.items():
+            formatted_res += f"<td>{value}</td>"
+        formatted_res += "</tr>"
+    formatted_res += "</table>"
+    return formatted_res
 
 
 master = {"NAME": "Master node", "IP": MASTER_IP, "PORT": 3306}
@@ -37,50 +55,50 @@ app = Flask(__name__)
 @app.route('/direct')
 def direct_hit():
     # forward the request directly to the master
-    my_sql_connection = pymysql.connect(host=master["IP"],
-                                        port=master["PORT"],
-                                        user='adam',  # as defined when set up of the master node instance
-                                        password='password',  # as defined when set up of the master node instance
-                                        database='sakila',
-                                        charset='utf8mb4',
-                                        cursorclass=pymysql.cursors.DictCursor)
+    connection = pymysql.connect(host=master["IP"],
+                                 port=master["PORT"],
+                                 user='adam',
+                                 password='password',
+                                 database='sakila',
+                                 charset='utf8mb4',
+                                 cursorclass=pymysql.cursors.DictCursor)
 
-    SQL_WRITE_OPERATION = "INSERT INTO city (city, country_id, last_update) VALUES ('Paris', 103, '2020-12-12 12:12:12');"
+    with connection:
+        with connection.cursor() as cursor:
+            sql = "SELECT * FROM city LIMIT 5;"
+            cursor.execute(sql)
+            results = cursor.fetchall()
 
-    with my_sql_connection:
-        with my_sql_connection.cursor() as cursor:
-            cursor.execute(SQL_WRITE_OPERATION)
-            result = cursor.fetchone()
+    formatted_res = get_formated_content(results)
 
-    res = "You have reached the master node by using the route (direct).\n You have mutate the database with the following query: " + SQL_WRITE_OPERATION
-    for key, value in result.items():
-        res += f"{key}: {value}\n"
-    return res
+    return """
+        <h1> You're querying Master node</h1><h2>Because of {_ROUTE_TYPE_} route type</h2>
+        {_CONTENT_}""".format(_ROUTE_TYPE_="Normal",
+                              _CONTENT_=formatted_res)
 
 
 @app.route('/random')
 def random_endpoint():
     chosen_slave = random.choice(slaves)
-    my_sql_connection = pymysql.connect(host=chosen_slave["IP"],
-                                        port=chosen_slave["PORT"],  # the port is the one of the ssh tunnel
-                                        user='adam',  # as defined when set up of the master node instance
-                                        password='password',  # as defined when set up of the master node instance
-                                        database='sakila',
-                                        charset='utf8mb4',
-                                        cursorclass=pymysql.cursors.DictCursor)
+    connection = pymysql.connect(host="127.0.0.1",
+                                 port=chosen_slave["PORT"],
+                                 user='adam',
+                                 password='password',
+                                 database='sakila',
+                                 charset='utf8mb4',
+                                 cursorclass=pymysql.cursors.DictCursor)
 
-    SQL_READ_OPERATION = "SELECT * FROM city LIMIT 5;"
-    with my_sql_connection:
-        with my_sql_connection.cursor() as cursor:
-            cursor.execute(SQL_READ_OPERATION)
-            result = cursor.fetchone()
+    with connection:
+        with connection.cursor() as cursor:
+            sql = "SELECT * FROM city LIMIT 10"
+            cursor.execute(sql)
 
-    res = "You have reached the " + chosen_slave[
-        "NAME"] + " by using the route (random).\nHere is the result your query: \n\n"
-
-    for key, value in result.items():
-        res += f"{key}: {value}\n"
-    return res
+            results = cursor.fetchall()
+    formatted_res = get_formated_content(results)
+    return """
+        <h1> You're querying {_NAME_} node</h1><h2>Because of {_ROUTE_TYPE_}</h2>
+        {_CONTENT_}""".format(_ROUTE_TYPE_="Random", _NAME_=chosen_slave["name"],
+                              _CONTENT_=formatted_res)
 
 
 @app.route('/custom')
@@ -88,23 +106,23 @@ def custom_endpoint():
     nodes = [master] + slaves
     min_ping_instance = min(nodes, key=lambda node: get_instance_ping(node["IP"]))
 
-    my_sql_connection = pymysql.connect(host=min_ping_instance["IP"],
-                                        port=min_ping_instance["PORT"],  # the port is the one of the ssh tunnel
-                                        user='adam',  # as defined when set up of the master node instance
-                                        password='password',  # as defined when set up of the master node instance
-                                        database='sakila',
-                                        charset='utf8mb4',
-                                        cursorclass=pymysql.cursors.DictCursor)
+    # ping the endpoints, and forward to the right one
+    connection = pymysql.connect(host=min_ping_instance["IP"],
+                                 port=min_ping_instance["PORT"],
+                                 user='adam',
+                                 password='password',
+                                 database='sakila',
+                                 charset='utf8mb4',
+                                 cursorclass=pymysql.cursors.DictCursor)
 
-    SQL_READ_OPERATION = "SELECT * FROM city LIMIT 5;"
-    with my_sql_connection:
-        with my_sql_connection.cursor() as cursor:
-            cursor.execute(SQL_READ_OPERATION)
-            result = cursor.fetchone()
+    with connection:
+        with connection.cursor() as cursor:
+            sql = "SELECT * FROM city LIMIT 10"
+            cursor.execute(sql)
+            results = cursor.fetchall()
+    formatted_res = get_formated_content(results)
 
-    res = "You have reached the " + min_ping_instance[
-        "NAME"] + " by using the route (random).\nHere is the result your query: \n\n"
-
-    for key, value in result.items():
-        res += f"{key}: {value}\n"
-    return res
+    return """
+            <h1> You're querying {_NAME_} node</h1><h2>Because of {_ROUTE_TYPE_}</h2>
+            {_CONTENT_}""".format(_ROUTE_TYPE_="Custom", _NAME_=min_ping_instance["name"],
+                                  _CONTENT_=formatted_res)
