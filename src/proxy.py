@@ -1,4 +1,6 @@
 #!/usr/bin/python
+import random
+
 from flask import Flask
 from pythonping import ping
 from sshtunnel import SSHTunnelForwarder
@@ -35,22 +37,47 @@ app = Flask(__name__)
 @app.route('/direct')
 def direct_hit():
     # forward the request directly to the master
-    connection = pymysql.connect(host=master["IP"],
-                                 port=master["PORT"],
-                                 user='adam',  # as defined when set up of the master node instance
-                                 password='password',  # as defined when set up of the master node instance
-                                 database='sakila',
-                                 charset='utf8mb4',
-                                 cursorclass=pymysql.cursors.DictCursor)
+    my_sql_connection = pymysql.connect(host=master["IP"],
+                                        port=master["PORT"],
+                                        user='adam',  # as defined when set up of the master node instance
+                                        password='password',  # as defined when set up of the master node instance
+                                        database='sakila',
+                                        charset='utf8mb4',
+                                        cursorclass=pymysql.cursors.DictCursor)
 
     SQL_WRITE_OPERATION = "INSERT INTO city (city, country_id, last_update) VALUES ('Paris', 103, '2020-12-12 12:12:12');"
 
-    with connection:
-        with connection.cursor() as cursor:
+    with my_sql_connection:
+        with my_sql_connection.cursor() as cursor:
             cursor.execute(SQL_WRITE_OPERATION)
             result = cursor.fetchone()
 
-    res = "You have reached the master node by using the route (direct).\nHere is the result of your query: \n"
+    res = "You have reached the master node by using the route (direct).\n You have mutate the database with the following query: " + SQL_WRITE_OPERATION
+    for key, value in result.items():
+        res += f"{key}: {value}\n"
+    return res
+
+
+@app.route('/random')
+def random_endpoint():
+    chosen_slave = random.choice(slaves)
+    my_sql_connection = pymysql.connect(host="127.0.0.1",
+                                        port=chosen_slave["port"],  # the port is the one of the ssh tunnel
+                                        user='adam',  # as defined when set up of the master node instance
+                                        password='password',  # as defined when set up of the master node instance
+                                        database='sakila',
+                                        charset='utf8mb4',
+                                        cursorclass=pymysql.cursors.DictCursor)
+
+    SQL_READ_OPERATION = "SELECT * FROM city LIMIT 5;"
+    with my_sql_connection:
+        with my_sql_connection.cursor() as cursor:
+            cursor.execute(SQL_READ_OPERATION)
+            result = cursor.fetchone()
+
+    res = "You have reached the " + chosen_slave[
+        "NAME"] + " by using the route (random).\nHere is the result your query: \n\n"
+
     for key, value in result.items():
         res += f"{key}: {value}\n"
     return res
@@ -58,9 +85,4 @@ def direct_hit():
 
 @app.route('/custom')
 def custom_endpoint():
-    pass
-
-
-@app.route('/random')
-def random_endpoint():
     pass
