@@ -24,6 +24,7 @@ wget --progress=bar:force:noscroll http://dev.mysql.com/get/Downloads/MySQL-Clus
 tar -xf mysql-cluster-gpl-7.2.1-linux2.6-x86_64.tar.gz && \
 mv mysql-cluster-gpl-7.2.1-linux2.6-x86_64 mysqlc && \
 echo "alias ndb_mgm=/home/ubuntu/mysqlc/bin/ndb_mgm" >> /home/ubuntu/.profile && \
+sudo apt install sysbench -y
 """
 
 USER_DATA_SLAVES = """#!/bin/bash
@@ -33,7 +34,8 @@ mkdir -p /opt/mysqlcluster/home && \
 mkdir -p /var/lib/mysqlcluster && \
 cd /opt/mysqlcluster/home && \
 wget --progress=bar:force:noscroll https://dev.mysql.com/get/Downloads/MySQL-Cluster-7.6/mysql-cluster-community-data-node_7.6.6-1ubuntu18.04_amd64.deb && \
-dpkg -i mysql-cluster-community-data-node_7.6.6-1ubuntu18.04_amd64.deb
+dpkg -i mysql-cluster-community-data-node_7.6.6-1ubuntu18.04_amd64.deb  && \
+sudo mkdir -p /opt/mysqlcluster/deploy/mysqld_data
 """
 
 USER_DATA_PROXY = """#!/bin/bash
