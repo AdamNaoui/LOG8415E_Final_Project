@@ -35,3 +35,9 @@ cd /opt/mysqlcluster/home && \
 wget --progress=bar:force:noscroll https://dev.mysql.com/get/Downloads/MySQL-Cluster-7.6/mysql-cluster-community-data-node_7.6.6-1ubuntu18.04_amd64.deb && \
 dpkg -i mysql-cluster-community-data-node_7.6.6-1ubuntu18.04_amd64.deb
 """
+
+USER_DATA_PROXY = """#!/bin/bash
+sudo apt update && \
+sudo apt install -y python3 python3-flask python3-pip && \
+sudo pip3 install pymysql sshtunnel pythonping
+"""
