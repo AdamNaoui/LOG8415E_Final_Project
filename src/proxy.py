@@ -3,6 +3,7 @@ from flask import Flask
 from pythonping import ping
 from sshtunnel import SSHTunnelForwarder
 from src.proxy_constants import MASTER_IP, FIRST_SLAVE_IP, SECOND_SLAVE_IP, THIRD_SLAVE_IP
+import pymysql.cursors
 
 
 def get_instance_ping(host):
@@ -31,9 +32,28 @@ for slave in slaves:
 app = Flask(__name__)
 
 
-@app.route('/normal')
-def normal_endpoint():
-    pass
+@app.route('/direct')
+def direct_hit():
+    # forward the request directly to the master
+    connection = pymysql.connect(host=master["IP"],
+                                 port=master["PORT"],
+                                 user='adam',  # as defined when set up of the master node instance
+                                 password='password',  # as defined when set up of the master node instance
+                                 database='sakila',
+                                 charset='utf8mb4',
+                                 cursorclass=pymysql.cursors.DictCursor)
+
+    SQL_WRITE_OPERATION = "INSERT INTO city (city, country_id, last_update) VALUES ('Paris', 103, '2020-12-12 12:12:12');"
+
+    with connection:
+        with connection.cursor() as cursor:
+            cursor.execute(SQL_WRITE_OPERATION)
+            result = cursor.fetchone()
+
+    res = "You have reached the master node by using the route (direct).\nHere is the result of your query: \n"
+    for key, value in result.items():
+        res += f"{key}: {value}\n"
+    return res
 
 
 @app.route('/custom')
