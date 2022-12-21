@@ -61,8 +61,8 @@ def direct_hit():
 @app.route('/random')
 def random_endpoint():
     chosen_slave = random.choice(slaves)
-    my_sql_connection = pymysql.connect(host="127.0.0.1",
-                                        port=chosen_slave["port"],  # the port is the one of the ssh tunnel
+    my_sql_connection = pymysql.connect(host=chosen_slave["IP"],
+                                        port=chosen_slave["PORT"],  # the port is the one of the ssh tunnel
                                         user='adam',  # as defined when set up of the master node instance
                                         password='password',  # as defined when set up of the master node instance
                                         database='sakila',
@@ -85,4 +85,26 @@ def random_endpoint():
 
 @app.route('/custom')
 def custom_endpoint():
-    pass
+    nodes = [master] + slaves
+    min_ping_instance = nodes.min(key=lambda node: get_instance_ping(node["IP"]))
+
+    my_sql_connection = pymysql.connect(host=min_ping_instance["IP"],
+                                        port=min_ping_instance["PORT"],  # the port is the one of the ssh tunnel
+                                        user='adam',  # as defined when set up of the master node instance
+                                        password='password',  # as defined when set up of the master node instance
+                                        database='sakila',
+                                        charset='utf8mb4',
+                                        cursorclass=pymysql.cursors.DictCursor)
+
+    SQL_READ_OPERATION = "SELECT * FROM city LIMIT 5;"
+    with my_sql_connection:
+        with my_sql_connection.cursor() as cursor:
+            cursor.execute(SQL_READ_OPERATION)
+            result = cursor.fetchone()
+
+    res = "You have reached the " + min_ping_instance[
+        "NAME"] + " by using the route (random).\nHere is the result your query: \n\n"
+
+    for key, value in result.items():
+        res += f"{key}: {value}\n"
+    return res
