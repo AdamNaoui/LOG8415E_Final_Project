@@ -86,7 +86,7 @@ def random_endpoint():
 @app.route('/custom')
 def custom_endpoint():
     nodes = [master] + slaves
-    min_ping_instance = nodes.min(key=lambda node: get_instance_ping(node["IP"]))
+    min_ping_instance = min(nodes, key=lambda node: get_instance_ping(node["IP"]))
 
     my_sql_connection = pymysql.connect(host=min_ping_instance["IP"],
                                         port=min_ping_instance["PORT"],  # the port is the one of the ssh tunnel
