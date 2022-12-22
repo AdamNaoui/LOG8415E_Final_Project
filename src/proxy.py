@@ -3,8 +3,12 @@ import random
 from flask import Flask
 from pythonping import ping
 from sshtunnel import SSHTunnelForwarder
-from src.proxy_constants import MASTER_IP, FIRST_SLAVE_IP, SECOND_SLAVE_IP, THIRD_SLAVE_IP
 import pymysql.cursors
+
+MASTER_IP = "<MASTER_IP>"  # TODO: replace with your master IP
+FIRST_SLAVE_IP = "<FIRST_SLAVE_IP>"  # TODO: replace with your first slave IP
+SECOND_SLAVE_IP = "<SECOND_SLAVE_IP>"  # TODO: replace with your second slave IP
+THIRD_SLAVE_IP = "<THIRD_SLAVE_IP>"  # TODO: replace with your third slave IP
 
 
 def get_instance_ping(host):
